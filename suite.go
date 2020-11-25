@@ -1,4 +1,4 @@
-package badgerbs
+package bstests
 
 import (
 	"context"
