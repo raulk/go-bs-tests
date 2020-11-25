@@ -48,7 +48,7 @@ func (s *Suite) RunTests(t *testing.T, prefix string) {
 	}
 }
 
-func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
+func (s *Suite) TestGetAndViewWhenKeyNotPresent(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -58,9 +58,16 @@ func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
 	bl, err := bs.Get(c)
 	require.Nil(t, bl)
 	require.Equal(t, blockstore.ErrNotFound, err)
+
+	err = bs.View(c, func(bytes []byte) error {
+		t.FailNow() // should not be invoked
+		return nil
+	})
+
+	require.Equal(t, blockstore.ErrNotFound, err)
 }
 
-func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
+func (s *Suite) TestGetAndViewWhenKeyIsNil(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -68,9 +75,15 @@ func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
 
 	_, err := bs.Get(cid.Undef)
 	require.Equal(t, blockstore.ErrNotFound, err)
+
+	err = bs.View(cid.Undef, func(bytes []byte) error {
+		t.FailNow() // should not be invoked
+		return nil
+	})
+	require.Equal(t, blockstore.ErrNotFound, err)
 }
 
-func (s *Suite) TestPutThenGetBlock(t *testing.T) {
+func (s *Suite) TestPutThenGetAndViewBlock(t *testing.T) {
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -84,6 +97,13 @@ func (s *Suite) TestPutThenGetBlock(t *testing.T) {
 	fetched, err := bs.Get(orig.Cid())
 	require.NoError(t, err)
 	require.Equal(t, orig.RawData(), fetched.RawData())
+
+	err = bs.View(orig.Cid(), func(bytes []byte) error {
+		require.Equal(t, orig.RawData(), bytes)
+		return nil
+	})
+	require.NoError(t, err)
+
 }
 
 func (s *Suite) TestHas(t *testing.T) {
@@ -120,6 +140,12 @@ func (s *Suite) TestCidv0v1(t *testing.T) {
 	fetched, err := bs.Get(cid.NewCidV1(cid.DagProtobuf, orig.Cid().Hash()))
 	require.NoError(t, err)
 	require.Equal(t, orig.RawData(), fetched.RawData())
+
+	err = bs.View(cid.NewCidV1(cid.DagProtobuf, orig.Cid().Hash()), func(bytes []byte) error {
+		require.Equal(t, orig.RawData(), bytes)
+		return nil
+	})
+	require.NoError(t, err)
 }
 
 func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
@@ -226,6 +252,12 @@ func (s *Suite) TestReopenPutGet(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, orig.RawData(), fetched.RawData())
 
+	err = bs.View(orig.Cid(), func(bytes []byte) error {
+		require.Equal(t, orig.RawData(), bytes)
+		return nil
+	})
+	require.NoError(t, err)
+
 	err = bs.(io.Closer).Close()
 	require.NoError(t, err)
 }
@@ -252,6 +284,12 @@ func (s *Suite) TestPutMany(t *testing.T) {
 		ok, err := bs.Has(blk.Cid())
 		require.NoError(t, err)
 		require.True(t, ok)
+
+		err = bs.View(blk.Cid(), func(bytes []byte) error {
+			require.Equal(t, blk.RawData(), bytes)
+			return nil
+		})
+		require.NoError(t, err)
 	}
 
 	ch, err := bs.AllKeysChan(context.Background())
@@ -291,7 +329,6 @@ func (s *Suite) TestDelete(t *testing.T) {
 	has, err := bs.Has(blks[1].Cid())
 	require.NoError(t, err)
 	require.False(t, has)
-
 }
 
 func insertBlocks(t *testing.T, bs blockstore.Blockstore, count int) []cid.Cid {
