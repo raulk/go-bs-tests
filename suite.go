@@ -1,4 +1,4 @@
-package bstests
+package bstest
 
 import (
 	"context"
@@ -23,8 +23,6 @@ type Blockstore interface {
 
 // Suite represents a suite of tests. To run the tests, provide the NewBlockstore
 // and OpenBlockstore functions for the blockstore under test. Then call RunTests().
-//
-// All
 type Suite struct {
 	NewBlockstore  func(tb testing.TB) (bs Blockstore, path string)
 	OpenBlockstore func(tb testing.TB, path string) (bs Blockstore, err error)
