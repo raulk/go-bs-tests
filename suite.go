@@ -102,8 +102,34 @@ func (s *Suite) TestPutThenGetAndViewBlock(t *testing.T) {
 		require.Equal(t, orig.RawData(), bytes)
 		return nil
 	})
+
+	require.NoError(t, err)
+}
+
+func (s *Suite) TestInsertExistingBlock(t *testing.T) {
+	bs, _ := s.NewBlockstore(t)
+	if c, ok := bs.(io.Closer); ok {
+		defer func() { require.NoError(t, c.Close()) }()
+	}
+
+	orig1 := blocks.NewBlock([]byte("some data 1"))
+	orig2 := blocks.NewBlock([]byte("some data 2"))
+
+	var err error
+	err = bs.Put(orig1)
 	require.NoError(t, err)
 
+	err = bs.Put(orig1)
+	require.NoError(t, err)
+
+	err = bs.Put(orig2)
+	require.NoError(t, err)
+
+	err = bs.Put(orig2)
+	require.NoError(t, err)
+
+	err = bs.PutMany([]blocks.Block{orig1, orig2})
+	require.NoError(t, err)
 }
 
 func (s *Suite) TestHas(t *testing.T) {
